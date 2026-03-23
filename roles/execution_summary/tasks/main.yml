@@ -12,10 +12,10 @@
       install_status: "{{ hostvars[item].splunk_install_status | default({'status': 'not-reported'}) }}"
       config_status: "{{ hostvars[item].splunk_config_status | default({'status': 'not-reported'}) }}"
       validation_status: "{{ hostvars[item].splunk_validation_status | default({'status': 'not-reported'}) }}"
-  loop: "{{ groups['runtime_targets'] | default([]) }}"
+  loop: "{{ groups['runtime_execution_targets'] | default([]) }}"
 
 - name: Emit compact execution summary
   ansible.builtin.debug:
     msg:
-      processed_hosts: "{{ groups['runtime_targets'] | default([]) }}"
+      processed_hosts: "{{ groups['runtime_execution_targets'] | default([]) }}"
       results: "{{ execution_summary_hosts }}"

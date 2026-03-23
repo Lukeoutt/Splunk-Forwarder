@@ -2,8 +2,8 @@
 - name: Validate bootstrap public key input
   ansible.builtin.assert:
     that:
-      - root_bootstrap_public_key | trim | length > 0
-    fail_msg: "Root SSH bootstrap failed: provide ROOT_BOOTSTRAP_PUBLIC_KEY."
+      - hostvars['localhost'].root_bootstrap_public_key | default('') | trim | length > 0
+    fail_msg: "Root SSH bootstrap failed: no ephemeral root public key is available."
   delegate_to: localhost
   run_once: true
 
@@ -11,10 +11,10 @@
   ansible.builtin.raw: >-
     {% if ansible_user == 'root' %}
     test -f /root/.ssh/authorized_keys &&
-    grep -Fqx {{ root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys
+    grep -Fqx {{ hostvars['localhost'].root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys
     {% else %}
     sudo su - -c "test -f /root/.ssh/authorized_keys &&
-    grep -Fqx {{ root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys"
+    grep -Fqx {{ hostvars['localhost'].root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys"
     {% endif %}
   changed_when: false
   register: root_bootstrap_presence
@@ -27,14 +27,14 @@
     install -d -m 700 /root/.ssh &&
     touch /root/.ssh/authorized_keys &&
     chmod 600 /root/.ssh/authorized_keys &&
-    grep -Fqx {{ root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys ||
-    echo {{ root_bootstrap_public_key | quote }} >> /root/.ssh/authorized_keys
+    grep -Fqx {{ hostvars['localhost'].root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys ||
+    echo {{ hostvars['localhost'].root_bootstrap_public_key | quote }} >> /root/.ssh/authorized_keys
     {% else %}
     sudo su - -c "install -d -m 700 /root/.ssh &&
     touch /root/.ssh/authorized_keys &&
     chmod 600 /root/.ssh/authorized_keys &&
-    grep -Fqx {{ root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys ||
-    echo {{ root_bootstrap_public_key | quote }} >> /root/.ssh/authorized_keys"
+    grep -Fqx {{ hostvars['localhost'].root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys ||
+    echo {{ hostvars['localhost'].root_bootstrap_public_key | quote }} >> /root/.ssh/authorized_keys"
     {% endif %}
   register: root_bootstrap_result
   changed_when: true
@@ -45,10 +45,10 @@
   ansible.builtin.raw: >-
     {% if ansible_user == 'root' %}
     test -f /root/.ssh/authorized_keys &&
-    grep -Fq {{ root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys
+    grep -Fq {{ hostvars['localhost'].root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys
     {% else %}
     sudo su - -c "test -f /root/.ssh/authorized_keys &&
-    grep -Fq {{ root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys"
+    grep -Fq {{ hostvars['localhost'].root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys"
     {% endif %}
   changed_when: false
   register: root_bootstrap_verify

@@ -11,8 +11,40 @@
     - role: vault_auth
     - role: resolve_connection
 
-- name: Prepare hosts, install Splunk UF, configure, and validate
+- name: Generate ephemeral root SSH key on the runner when needed
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - defaults/main.yml
+    - group_vars/all.yml
+
+  roles:
+    - role: generate_ephemeral_root_key
+      when: ansible_user != 'root'
+
+- name: Bootstrap ephemeral root SSH access when needed
   hosts: runtime_targets
+  gather_facts: false
+  vars_files:
+    - defaults/main.yml
+    - group_vars/all.yml
+
+  roles:
+    - role: bootstrap_root_ssh
+      when: hostvars['localhost'].ansible_user != 'root'
+
+- name: Promote root execution targets
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - defaults/main.yml
+    - group_vars/all.yml
+
+  roles:
+    - role: promote_root_connection
+
+- name: Prepare hosts, install Splunk UF, configure, and validate
+  hosts: runtime_execution_targets
   gather_facts: false
   vars_files:
     - defaults/main.yml
@@ -25,13 +57,35 @@
 
   roles:
     - role: prepare_hosts
-      become: "{{ ansible_user != 'root' }}"
+      become: false
     - role: splunk_install
-      become: "{{ ansible_user != 'root' }}"
+      become: false
     - role: splunk_config
-      become: "{{ ansible_user != 'root' }}"
+      become: false
     - role: splunk_validate
-      become: "{{ ansible_user != 'root' }}"
+      become: false
+
+- name: Clean up ephemeral root SSH access when used
+  hosts: runtime_execution_targets
+  gather_facts: false
+  vars_files:
+    - defaults/main.yml
+    - group_vars/all.yml
+
+  roles:
+    - role: cleanup_root_ssh
+      when: hostvars['localhost'].ansible_user != 'root'
+
+- name: Clean up local ephemeral key material
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - defaults/main.yml
+    - group_vars/all.yml
+
+  roles:
+    - role: cleanup_local_ephemeral_key
+      when: ansible_user != 'root'
 
 - name: Summarize execution
   hosts: localhost

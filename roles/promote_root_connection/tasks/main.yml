@@ -1,0 +1,36 @@
+---
+- name: Register execution targets using direct root login
+  ansible.builtin.add_host:
+    name: "{{ item }}"
+    groups: runtime_execution_targets
+    ansible_host: "{{ item }}"
+    ansible_user: >-
+      {{
+        'root'
+        if hostvars['localhost'].ansible_user != 'root'
+        else hostvars['localhost'].ansible_user
+      }}
+    ansible_password: >-
+      {{
+        hostvars['localhost'].ansible_password
+        if hostvars['localhost'].ansible_user == 'root' and hostvars['localhost'].ansible_password | default('') | length > 0
+        else omit
+      }}
+    ansible_ssh_private_key_file: >-
+      {{
+        hostvars['localhost'].ephemeral_root_private_key_path
+        if hostvars['localhost'].ansible_user != 'root'
+        else (
+          hostvars['localhost'].ansible_ssh_private_key_file
+          if hostvars['localhost'].ansible_ssh_private_key_file | default('') | length > 0
+          else omit
+        )
+      }}
+    ansible_ssh_common_args: >-
+      {{
+        hostvars['localhost'].ansible_ssh_common_args
+        if hostvars['localhost'].ansible_user == 'root' and hostvars['localhost'].ansible_ssh_common_args | default('') | length > 0
+        else omit
+      }}
+  loop: "{{ hostvars['localhost'].normalized_target_hosts }}"
+  no_log: true

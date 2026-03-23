@@ -1,0 +1,56 @@
+---
+- name: Reuse provided ephemeral root public key when supplied
+  ansible.builtin.set_fact:
+    generated_root_public_key: "{{ ephemeral_root_public_key }}"
+  when: ephemeral_root_public_key | trim | length > 0
+  no_log: true
+
+- name: Create a temporary directory for the generated root SSH keypair
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: ansible-root-key
+  register: generated_root_key_dir
+  when: ephemeral_root_public_key | trim | length == 0
+
+- name: Generate an ephemeral root SSH keypair on the runner
+  ansible.builtin.command:
+    argv:
+      - ssh-keygen
+      - -q
+      - -t
+      - ed25519
+      - -N
+      - ""
+      - -f
+      - "{{ generated_root_key_dir.path }}/id_ed25519"
+  when: ephemeral_root_public_key | trim | length == 0
+  no_log: true
+
+- name: Read the generated public key
+  ansible.builtin.slurp:
+    src: "{{ generated_root_key_dir.path }}/id_ed25519.pub"
+  register: generated_root_public_key_file
+  when: ephemeral_root_public_key | trim | length == 0
+  no_log: true
+
+- name: Store generated keypair facts for later plays
+  ansible.builtin.set_fact:
+    ephemeral_root_private_key_path: >-
+      {{
+        generated_root_key_dir.path + '/id_ed25519'
+        if ephemeral_root_public_key | trim | length == 0
+        else ''
+      }}
+    generated_root_public_key: >-
+      {{
+        (generated_root_public_key_file.content | b64decode | trim)
+        if ephemeral_root_public_key | trim | length == 0
+        else generated_root_public_key
+      }}
+    root_bootstrap_public_key: >-
+      {{
+        (generated_root_public_key_file.content | b64decode | trim)
+        if ephemeral_root_public_key | trim | length == 0
+        else ephemeral_root_public_key
+      }}
+  no_log: true

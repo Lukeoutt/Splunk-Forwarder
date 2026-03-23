@@ -2,8 +2,8 @@
 - name: Validate cleanup public key input
   ansible.builtin.assert:
     that:
-      - ephemeral_root_public_key | trim | length > 0
-    fail_msg: "Root SSH cleanup failed: provide EPHEMERAL_ROOT_PUBLIC_KEY."
+      - hostvars['localhost'].root_bootstrap_public_key | default('') | trim | length > 0
+    fail_msg: "Root SSH cleanup failed: no ephemeral root public key is available."
   delegate_to: localhost
   run_once: true
 
@@ -11,10 +11,10 @@
   ansible.builtin.raw: >-
     {% if ansible_user == 'root' %}
     test -f /root/.ssh/authorized_keys &&
-    grep -Fqx {{ ephemeral_root_public_key | quote }} /root/.ssh/authorized_keys
+    grep -Fqx {{ hostvars['localhost'].root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys
     {% else %}
     sudo su - -c "test -f /root/.ssh/authorized_keys &&
-    grep -Fqx {{ ephemeral_root_public_key | quote }} /root/.ssh/authorized_keys"
+    grep -Fqx {{ hostvars['localhost'].root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys"
     {% endif %}
   changed_when: false
   failed_when: false
@@ -26,7 +26,7 @@
     {% if ansible_user == 'root' %}
     python3 - <<'PY'
     from pathlib import Path
-    key = {{ ephemeral_root_public_key | to_json }}
+    key = {{ hostvars['localhost'].root_bootstrap_public_key | to_json }}
     path = Path('/root/.ssh/authorized_keys')
     if path.exists():
         lines = path.read_text().splitlines()
@@ -37,7 +37,7 @@
     {% else %}
     sudo su - -c "python3 - <<'PY'
     from pathlib import Path
-    key = {{ ephemeral_root_public_key | to_json }}
+    key = {{ hostvars['localhost'].root_bootstrap_public_key | to_json }}
     path = Path('/root/.ssh/authorized_keys')
     if path.exists():
         lines = path.read_text().splitlines()
@@ -54,10 +54,10 @@
   ansible.builtin.raw: >-
     {% if ansible_user == 'root' %}
     test ! -f /root/.ssh/authorized_keys ||
-    ! grep -Fqx {{ ephemeral_root_public_key | quote }} /root/.ssh/authorized_keys
+    ! grep -Fqx {{ hostvars['localhost'].root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys
     {% else %}
     sudo su - -c "test ! -f /root/.ssh/authorized_keys ||
-    ! grep -Fqx {{ ephemeral_root_public_key | quote }} /root/.ssh/authorized_keys"
+    ! grep -Fqx {{ hostvars['localhost'].root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys"
     {% endif %}
   changed_when: false
   register: root_key_cleanup_verify

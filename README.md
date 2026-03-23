@@ -1,6 +1,6 @@
 # Splunk Universal Forwarder Ansible Automation
 
-This project is structured for API-driven execution with minimal runtime input. The caller only needs to provide Vault authentication, target hosts, and one remote access method. Package URLs, install paths, Splunk output targets, and Vault secret path conventions are defined in code.
+This project is structured for API-driven execution with minimal runtime input. The caller only needs to provide Vault authentication, target hosts, and one remote access method. Package URLs, install paths, Splunk output targets, Vault secret path conventions, and temporary root SSH key generation are handled in code.
 
 ## Runtime Inputs
 
@@ -9,10 +9,6 @@ Supported runtime inputs are loaded from environment variables in [defaults/main
 - `VAULT_TOKEN` or `VAULT_USERNAME` + `VAULT_PASSWORD`
 - `TARGET_HOSTS`
 - `SERVICE_ID` or `REMOTE_USER` + `REMOTE_PASSWORD`
-
-For the one-time root bootstrap playbook, also provide:
-
-- `EPHEMERAL_ROOT_PUBLIC_KEY` or `ROOT_BOOTSTRAP_PUBLIC_KEY`
 
 ## Project Layout
 
@@ -27,9 +23,12 @@ For the one-time root bootstrap playbook, also provide:
 - `roles/preflight`: validate and normalize inputs
 - `roles/vault_auth`: authenticate to Vault
 - `roles/resolve_connection`: resolve SSH key or password connection details
+- `roles/generate_ephemeral_root_key`: generate a temporary root SSH keypair on the runner when required
 - `roles/prepare_hosts`: verify connectivity and derive OS-aware package info
 - `roles/bootstrap_root_ssh`: install a root authorized key using direct root access or `sudo su -`
+- `roles/promote_root_connection`: switch the execution group to direct root SSH
 - `roles/cleanup_root_ssh`: remove the temporary root authorized key after the run
+- `roles/cleanup_local_ephemeral_key`: delete the generated temporary keypair from the runner
 - `roles/splunk_install`: install UF and enable the service
 - `roles/splunk_config`: deploy predefined config templates
 - `roles/splunk_validate`: verify service and forward-server status
@@ -64,7 +63,6 @@ $env:VAULT_TOKEN = "s.xxxxx"
 $env:TARGET_HOSTS = "server1.example.com"
 $env:REMOTE_USER = "svc_splunk"
 $env:REMOTE_PASSWORD = "super-secret"
-$env:EPHEMERAL_ROOT_PUBLIC_KEY = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... aap-runner"
 ansible-playbook -i inventory/hosts.yml bootstrap_root_ssh.yml
 ```
 
@@ -75,17 +73,17 @@ $env:VAULT_TOKEN = "s.xxxxx"
 $env:TARGET_HOSTS = "server1.example.com"
 $env:REMOTE_USER = "svc_splunk"
 $env:REMOTE_PASSWORD = "super-secret"
-$env:EPHEMERAL_ROOT_PUBLIC_KEY = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... aap-runner"
 ansible-playbook -i inventory/hosts.yml cleanup_root_ssh.yml
 ```
 
 Recommended lifecycle:
 
 ```text
-1. Generate or inject a temporary runner keypair
-2. Run bootstrap_root_ssh.yml with the temporary public key
-3. Run site.yml as root using the matching private key
-4. Run cleanup_root_ssh.yml with the same temporary public key
+1. The runner generates a temporary ed25519 keypair automatically when the initial login user is not root
+2. The public key is added to /root/.ssh/authorized_keys using the initial login and sudo su -
+3. The main install flow reconnects as root using the generated private key
+4. The public key is removed from the remote host after the run
+5. The generated private key is deleted from the runner after the run
 ```
 
 ## Security Notes
@@ -93,4 +91,4 @@ Recommended lifecycle:
 - Vault tokens, passwords, and retrieved SSH keys are handled with `no_log: true`.
 - SSH private key material from Vault is written to a temporary controller file only for the current run.
 - Static platform settings stay in [group_vars/all.yml](D:/GitHub%20Projects/Splunk%20Universal%20Forwarder/group_vars/all.yml) and should be moved to protected environment-specific config as needed.
-- When `REMOTE_USER=root`, the main UF automation skips `sudo` automatically.
+- When `REMOTE_USER=root`, the main UF automation skips bootstrap and connects directly as root.
