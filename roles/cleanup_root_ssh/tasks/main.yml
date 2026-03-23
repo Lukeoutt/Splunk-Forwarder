@@ -1,0 +1,65 @@
+---
+- name: Validate cleanup public key input
+  ansible.builtin.assert:
+    that:
+      - ephemeral_root_public_key | trim | length > 0
+    fail_msg: "Root SSH cleanup failed: provide EPHEMERAL_ROOT_PUBLIC_KEY."
+  delegate_to: localhost
+  run_once: true
+
+- name: Check whether the ephemeral root key is present
+  ansible.builtin.raw: >-
+    {% if ansible_user == 'root' %}
+    test -f /root/.ssh/authorized_keys &&
+    grep -Fqx {{ ephemeral_root_public_key | quote }} /root/.ssh/authorized_keys
+    {% else %}
+    sudo su - -c "test -f /root/.ssh/authorized_keys &&
+    grep -Fqx {{ ephemeral_root_public_key | quote }} /root/.ssh/authorized_keys"
+    {% endif %}
+  changed_when: false
+  failed_when: false
+  register: root_key_presence
+  no_log: true
+
+- name: Remove the ephemeral root key from authorized_keys
+  ansible.builtin.raw: >-
+    {% if ansible_user == 'root' %}
+    python3 - <<'PY'
+    from pathlib import Path
+    key = {{ ephemeral_root_public_key | to_json }}
+    path = Path('/root/.ssh/authorized_keys')
+    if path.exists():
+        lines = path.read_text().splitlines()
+        kept = [line for line in lines if line.strip() != key.strip()]
+        if kept != lines:
+            path.write_text('\n'.join(kept) + ('\n' if kept else ''))
+    PY
+    {% else %}
+    sudo su - -c "python3 - <<'PY'
+    from pathlib import Path
+    key = {{ ephemeral_root_public_key | to_json }}
+    path = Path('/root/.ssh/authorized_keys')
+    if path.exists():
+        lines = path.read_text().splitlines()
+        kept = [line for line in lines if line.strip() != key.strip()]
+        if kept != lines:
+            path.write_text('\\n'.join(kept) + ('\\n' if kept else ''))
+    PY"
+    {% endif %}
+  when: root_key_presence.rc == 0
+  changed_when: true
+  no_log: true
+
+- name: Verify the ephemeral root key was removed
+  ansible.builtin.raw: >-
+    {% if ansible_user == 'root' %}
+    test ! -f /root/.ssh/authorized_keys ||
+    ! grep -Fqx {{ ephemeral_root_public_key | quote }} /root/.ssh/authorized_keys
+    {% else %}
+    sudo su - -c "test ! -f /root/.ssh/authorized_keys ||
+    ! grep -Fqx {{ ephemeral_root_public_key | quote }} /root/.ssh/authorized_keys"
+    {% endif %}
+  changed_when: false
+  register: root_key_cleanup_verify
+  failed_when: root_key_cleanup_verify.rc != 0
+  no_log: true

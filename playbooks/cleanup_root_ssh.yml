@@ -1,0 +1,2 @@
+---
+- import_playbook: ../cleanup_root_ssh.yml
