@@ -27,6 +27,7 @@
 - name: Bootstrap ephemeral root SSH access when needed
   hosts: runtime_targets
   gather_facts: false
+  become: false
   vars_files:
     - defaults/main.yml
     - group_vars/all.yml
@@ -71,6 +72,7 @@
 - name: Clean up ephemeral root SSH access when used
   hosts: runtime_execution_targets
   gather_facts: false
+  become: false
   vars_files:
     - defaults/main.yml
     - group_vars/all.yml

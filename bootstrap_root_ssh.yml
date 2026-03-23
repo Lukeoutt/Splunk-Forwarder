@@ -15,6 +15,7 @@
 - name: Bootstrap root SSH authorized key
   hosts: runtime_targets
   gather_facts: false
+  become: false
   vars_files:
     - defaults/main.yml
     - group_vars/all.yml
