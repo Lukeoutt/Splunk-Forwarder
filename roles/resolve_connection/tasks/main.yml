@@ -1,0 +1,73 @@
+---
+- name: Resolve remote connection from service ID
+  when: connection_auth_method == 'service_id'
+  no_log: true
+  block:
+    - name: Read SSH key material from Vault
+      ansible.builtin.uri:
+        url: >-
+          {{ vault_addr }}/v1/{{
+            vault_service_ssh_key_path_template | replace('{service_id}', service_id)
+          }}
+        method: GET
+        headers:
+          X-Vault-Token: "{{ vault_client_token }}"
+        validate_certs: "{{ vault_validate_certs }}"
+        return_content: true
+        status_code: 200
+      register: vault_service_key_response
+
+    - name: Validate Vault SSH key payload
+      ansible.builtin.assert:
+        that:
+          - vault_service_key_response.json.data.data.private_key | default('') | length > 0
+          - vault_service_key_response.json.data.data.username | default('') | length > 0
+        fail_msg: "Unable to retrieve SSH key for provided service_id from Vault."
+
+    - name: Create a temporary SSH key file on the controller
+      ansible.builtin.tempfile:
+        state: file
+        suffix: .pem
+      register: temporary_ssh_key_file
+
+    - name: Write SSH private key to temporary file
+      ansible.builtin.copy:
+        dest: "{{ temporary_ssh_key_file.path }}"
+        content: "{{ vault_service_key_response.json.data.data.private_key }}"
+        mode: "0600"
+
+    - name: Store derived connection facts for service ID auth
+      ansible.builtin.set_fact:
+        ansible_user: "{{ vault_service_key_response.json.data.data.username }}"
+        ansible_ssh_private_key_file: "{{ temporary_ssh_key_file.path }}"
+        ansible_password: ""
+        ansible_become: true
+        ansible_become_method: sudo
+
+  rescue:
+    - name: Fail if service ID auth resolution fails
+      ansible.builtin.fail:
+        msg: "Unable to retrieve SSH key for provided service_id from Vault."
+
+- name: Resolve remote connection from direct username and password
+  when: connection_auth_method == 'password'
+  no_log: true
+  ansible.builtin.set_fact:
+    ansible_user: "{{ remote_user }}"
+    ansible_password: "{{ remote_password }}"
+    ansible_ssh_private_key_file: ""
+    ansible_become: true
+    ansible_become_method: sudo
+
+- name: Register dynamic target hosts for the execution run
+  ansible.builtin.add_host:
+    name: "{{ item }}"
+    groups: runtime_targets
+    ansible_host: "{{ item }}"
+    ansible_user: "{{ ansible_user }}"
+    ansible_password: "{{ ansible_password | default(omit) }}"
+    ansible_ssh_private_key_file: "{{ ansible_ssh_private_key_file if ansible_ssh_private_key_file | length > 0 else omit }}"
+    ansible_become: "{{ ansible_become }}"
+    ansible_become_method: "{{ ansible_become_method }}"
+  loop: "{{ normalized_target_hosts }}"
+  no_log: true

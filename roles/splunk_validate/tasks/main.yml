@@ -1,0 +1,38 @@
+---
+- name: Gather service facts
+  ansible.builtin.service_facts:
+
+- name: Assert Splunk UF service is running
+  ansible.builtin.assert:
+    that:
+      - (ansible_facts.services[splunk_service_name + '.service'] | default({})).state | default('') == 'running'
+    fail_msg: "Splunk UF installation failed on host {{ inventory_hostname }}."
+
+- name: Check outputs target registration when connectivity validation is enabled
+  ansible.builtin.command:
+    argv:
+      - "{{ splunk_install_path }}/bin/splunk"
+      - list
+      - forward-server
+  register: splunk_forward_server_check
+  changed_when: false
+  failed_when: false
+  when:
+    - validate_connectivity
+    - splunk_outputs_target | length > 0
+
+- name: Record validation status
+  ansible.builtin.set_fact:
+    splunk_validation_status:
+      service_running: true
+      forward_server_check_rc: "{{ splunk_forward_server_check.rc | default(0) }}"
+      forward_server_output: "{{ splunk_forward_server_check.stdout | default('') }}"
+
+- name: Fail when Splunk target validation fails
+  ansible.builtin.fail:
+    msg: "Splunk connectivity validation failed on host {{ inventory_hostname }}."
+  when:
+    - validate_connectivity
+    - splunk_outputs_target | length > 0
+    - splunk_forward_server_check.rc is defined
+    - splunk_forward_server_check.rc != 0

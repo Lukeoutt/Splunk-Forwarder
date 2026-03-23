@@ -1,0 +1,58 @@
+---
+- name: Check whether Splunk Universal Forwarder is already installed
+  ansible.builtin.stat:
+    path: "{{ splunk_install_path }}/bin/splunk"
+  register: splunk_binary_stat
+
+- name: Download Splunk Universal Forwarder package
+  ansible.builtin.get_url:
+    url: "{{ splunk_package_url }}"
+    dest: "{{ splunk_remote_package_path }}"
+    mode: "0644"
+
+- name: Install Splunk UF on RedHat-family hosts
+  ansible.builtin.dnf:
+    name: "{{ splunk_remote_package_path }}"
+    state: present
+    disable_gpg_check: true
+  when: ansible_os_family == 'RedHat'
+
+- name: Install Splunk UF on Debian-family hosts
+  ansible.builtin.apt:
+    deb: "{{ splunk_remote_package_path }}"
+    state: present
+  when: ansible_os_family == 'Debian'
+
+- name: Check whether boot-start is already configured
+  ansible.builtin.stat:
+    path: "/etc/systemd/system/{{ splunk_service_name }}.service"
+  register: splunk_boot_start_service
+
+- name: Enable Splunk UF boot-start
+  ansible.builtin.command:
+    argv:
+      - "{{ splunk_install_path }}/bin/splunk"
+      - enable
+      - boot-start
+      - --answer-yes
+      - --no-prompt
+      - --accept-license
+      - --systemd-managed
+      - "1"
+  when:
+    - splunk_enable_boot_start
+    - not splunk_boot_start_service.stat.exists
+  changed_when: not splunk_boot_start_service.stat.exists
+  notify: Reload systemd
+
+- name: Ensure Splunk UF service is enabled and started
+  ansible.builtin.service:
+    name: "{{ splunk_service_name }}"
+    enabled: true
+    state: started
+
+- name: Record install status
+  ansible.builtin.set_fact:
+    splunk_install_status:
+      changed: "{{ (not splunk_binary_stat.stat.exists) | bool }}"
+      package: "{{ splunk_package_name }}"

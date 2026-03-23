@@ -1,0 +1,31 @@
+---
+vault_addr: "{{ lookup('env', 'VAULT_ADDR') | default('http://127.0.0.1:8200', true) }}"
+vault_validate_certs: false
+vault_userpass_mount: userpass
+
+vault_secret_base_path: kv/data/splunk-universal-forwarder
+vault_service_ssh_key_path_template: "kv/data/remote-access/services/{service_id}/ssh"
+vault_service_password_path_template: "kv/data/remote-access/services/{service_id}/password"
+vault_remote_user_password_path_template: "kv/data/remote-access/users/{remote_user}/password"
+
+splunk_package_url_map:
+  RedHat: "https://download.splunk.com/products/universalforwarder/releases/9.4.0/linux/splunkforwarder-9.4.0-6b4ebe426ca6.x86_64.rpm"
+  Debian: "https://download.splunk.com/products/universalforwarder/releases/9.4.0/linux/splunkforwarder-9.4.0-6b4ebe426ca6-linux-2.6-amd64.deb"
+
+splunk_package_name_map:
+  RedHat: "splunkforwarder-9.4.0-6b4ebe426ca6.x86_64.rpm"
+  Debian: "splunkforwarder-9.4.0-6b4ebe426ca6-linux-2.6-amd64.deb"
+
+splunk_install_path: /opt/splunkforwarder
+splunk_remote_package_dir: /var/tmp/splunk-uf
+splunk_service_name: SplunkForwarder
+splunk_admin_user: admin
+splunk_outputs_target: "inputs.example.splunkcloud.com"
+splunk_deployment_server: ""
+splunk_tcpout_port: "9997"
+splunk_mgmt_port: "8089"
+splunk_accept_license: true
+splunk_enable_boot_start: true
+
+validate_connectivity: true
+restart_after_config: true

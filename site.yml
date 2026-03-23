@@ -1,0 +1,36 @@
+---
+- name: Resolve runtime inputs and connection details
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - defaults/main.yml
+    - group_vars/all.yml
+
+  roles:
+    - role: preflight
+    - role: vault_auth
+    - role: resolve_connection
+
+- name: Prepare hosts, install Splunk UF, configure, and validate
+  hosts: runtime_targets
+  gather_facts: true
+  become: true
+  vars_files:
+    - defaults/main.yml
+    - group_vars/all.yml
+
+  roles:
+    - role: prepare_hosts
+    - role: splunk_install
+    - role: splunk_config
+    - role: splunk_validate
+
+- name: Summarize execution
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - defaults/main.yml
+    - group_vars/all.yml
+
+  roles:
+    - role: execution_summary

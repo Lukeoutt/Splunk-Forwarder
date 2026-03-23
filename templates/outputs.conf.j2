@@ -1,0 +1,5 @@
+[tcpout]
+defaultGroup = primary-autolb-group
+
+[tcpout:primary-autolb-group]
+server = {{ splunk_outputs_target }}:{{ splunk_tcpout_port }}

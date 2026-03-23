@@ -1,0 +1,31 @@
+---
+- name: Use provided Vault token
+  ansible.builtin.set_fact:
+    vault_client_token: "{{ vault_token }}"
+  when: vault_auth_method == 'token'
+  no_log: true
+
+- name: Authenticate to Vault with username and password
+  when: vault_auth_method == 'userpass'
+  no_log: true
+  block:
+    - name: Request Vault token via userpass auth
+      ansible.builtin.uri:
+        url: "{{ vault_addr }}/v1/auth/{{ vault_userpass_mount }}/login/{{ vault_username }}"
+        method: POST
+        body_format: json
+        body:
+          password: "{{ vault_password }}"
+        validate_certs: "{{ vault_validate_certs }}"
+        return_content: true
+        status_code: 200
+      register: vault_login_response
+
+    - name: Store Vault client token
+      ansible.builtin.set_fact:
+        vault_client_token: "{{ vault_login_response.json.auth.client_token }}"
+
+  rescue:
+    - name: Fail with a readable Vault auth error
+      ansible.builtin.fail:
+        msg: "Vault authentication failed: no valid vault credentials were provided."

@@ -1,0 +1,59 @@
+---
+- name: Normalize target host input from string or list
+  ansible.builtin.set_fact:
+    normalized_target_hosts: >-
+      {{
+        (
+          target_hosts
+          if target_hosts is sequence and target_hosts is not string
+          else (target_hosts | string).split(',')
+        )
+        | map('trim')
+        | reject('equalto', '')
+        | unique
+        | list
+      }}
+
+- name: Determine Vault authentication method
+  ansible.builtin.set_fact:
+    vault_auth_method: >-
+      {{
+        'token'
+        if vault_token | length > 0
+        else (
+          'userpass'
+          if (vault_username | length > 0 and vault_password | length > 0)
+          else ''
+        )
+      }}
+
+- name: Determine remote connection authentication method
+  ansible.builtin.set_fact:
+    connection_auth_method: >-
+      {{
+        'service_id'
+        if service_id | length > 0
+        else (
+          'password'
+          if (remote_user | length > 0 and remote_password | length > 0)
+          else ''
+        )
+      }}
+
+- name: Validate Vault authentication inputs
+  ansible.builtin.assert:
+    that:
+      - vault_auth_method | length > 0
+    fail_msg: "Vault authentication failed: no valid vault credentials were provided."
+
+- name: Validate target hosts input
+  ansible.builtin.assert:
+    that:
+      - normalized_target_hosts | length > 0
+    fail_msg: "Target hosts input is empty."
+
+- name: Validate remote authentication inputs
+  ansible.builtin.assert:
+    that:
+      - connection_auth_method | length > 0
+    fail_msg: "Remote authentication failed: provide either service_id or remote_user and remote_password."

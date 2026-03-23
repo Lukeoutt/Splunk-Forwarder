@@ -1,0 +1,17 @@
+---
+vault_token: "{{ lookup('env', 'VAULT_TOKEN') | default('', true) }}"
+vault_username: "{{ lookup('env', 'VAULT_USERNAME') | default('', true) }}"
+vault_password: "{{ lookup('env', 'VAULT_PASSWORD') | default('', true) }}"
+
+target_hosts: >-
+  {{
+    (
+      lookup('env', 'TARGET_HOSTS') | default('', true)
+    ).split(',')
+    if (lookup('env', 'TARGET_HOSTS') | default('', true)) is string
+    else []
+  }}
+
+service_id: "{{ lookup('env', 'SERVICE_ID') | default('', true) }}"
+remote_user: "{{ lookup('env', 'REMOTE_USER') | default('', true) }}"
+remote_password: "{{ lookup('env', 'REMOTE_PASSWORD') | default('', true) }}"

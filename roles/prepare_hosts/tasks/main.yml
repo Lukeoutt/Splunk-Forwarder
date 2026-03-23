@@ -1,0 +1,21 @@
+---
+- name: Verify remote connectivity
+  ansible.builtin.ping:
+
+- name: Validate supported Linux distribution
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family in ['RedHat', 'Debian']
+    fail_msg: "Unsupported operating system on {{ inventory_hostname }}. This automation supports RedHat and Debian families."
+
+- name: Derive package source for the host OS
+  ansible.builtin.set_fact:
+    splunk_package_url: "{{ splunk_package_url_map[ansible_os_family] }}"
+    splunk_package_name: "{{ splunk_package_name_map[ansible_os_family] }}"
+    splunk_remote_package_path: "{{ splunk_remote_package_dir }}/{{ splunk_package_name_map[ansible_os_family] }}"
+
+- name: Ensure remote staging directory exists
+  ansible.builtin.file:
+    path: "{{ splunk_remote_package_dir }}"
+    state: directory
+    mode: "0755"

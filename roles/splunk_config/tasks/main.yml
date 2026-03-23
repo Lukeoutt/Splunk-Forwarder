@@ -1,0 +1,39 @@
+---
+- name: Ensure Splunk local config directory exists
+  ansible.builtin.file:
+    path: "{{ splunk_install_path }}/etc/system/local"
+    state: directory
+    mode: "0755"
+
+- name: Deploy outputs.conf
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../templates/outputs.conf.j2"
+    dest: "{{ splunk_install_path }}/etc/system/local/outputs.conf"
+    mode: "0644"
+  when: splunk_outputs_target | length > 0
+  notify: Restart Splunk UF
+
+- name: Deploy deploymentclient.conf when configured
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../templates/deploymentclient.conf.j2"
+    dest: "{{ splunk_install_path }}/etc/system/local/deploymentclient.conf"
+    mode: "0644"
+  when: splunk_deployment_server | length > 0
+  notify: Restart Splunk UF
+
+- name: Deploy inputs.conf
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../templates/inputs.conf.j2"
+    dest: "{{ splunk_install_path }}/etc/system/local/inputs.conf"
+    mode: "0644"
+  notify: Restart Splunk UF
+
+- name: Flush config restart handlers when enabled
+  ansible.builtin.meta: flush_handlers
+  when: restart_after_config
+
+- name: Record configuration status
+  ansible.builtin.set_fact:
+    splunk_config_status:
+      outputs_target: "{{ splunk_outputs_target }}"
+      deployment_server: "{{ splunk_deployment_server | default('') }}"
