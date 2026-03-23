@@ -2,6 +2,7 @@
 - name: Resolve runtime inputs and connection details
   hosts: localhost
   gather_facts: false
+  become: false
   vars_files:
     - defaults/main.yml
     - group_vars/all.yml
@@ -14,6 +15,7 @@
 - name: Generate ephemeral root SSH key on the runner when needed
   hosts: localhost
   gather_facts: false
+  become: false
   vars_files:
     - defaults/main.yml
     - group_vars/all.yml
@@ -36,6 +38,7 @@
 - name: Promote root execution targets
   hosts: localhost
   gather_facts: false
+  become: false
   vars_files:
     - defaults/main.yml
     - group_vars/all.yml
@@ -79,6 +82,7 @@
 - name: Clean up local ephemeral key material
   hosts: localhost
   gather_facts: false
+  become: false
   vars_files:
     - defaults/main.yml
     - group_vars/all.yml
@@ -90,6 +94,7 @@
 - name: Summarize execution
   hosts: localhost
   gather_facts: false
+  become: false
   vars_files:
     - defaults/main.yml
     - group_vars/all.yml

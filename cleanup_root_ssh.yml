@@ -2,6 +2,7 @@
 - name: Resolve runtime inputs and connection details for root SSH cleanup
   hosts: localhost
   gather_facts: false
+  become: false
   vars_files:
     - defaults/main.yml
     - group_vars/all.yml
