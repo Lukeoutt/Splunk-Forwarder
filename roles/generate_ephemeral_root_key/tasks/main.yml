@@ -13,12 +13,11 @@
   when: ephemeral_root_public_key | trim | length == 0
 
 - name: Generate an ephemeral root SSH keypair on the runner
-  community.crypto.openssh_keypair:
-    path: "{{ generated_root_key_dir.path }}/id_ed25519"
-    type: ed25519
-    comment: ansible-ephemeral-root
-    mode: "0600"
-    state: present
+  ansible.builtin.shell: >-
+    ssh-keygen -q -t ed25519 -N '' -C ansible-ephemeral-root
+    -f {{ generated_root_key_dir.path | quote }}/id_ed25519
+  args:
+    creates: "{{ generated_root_key_dir.path }}/id_ed25519"
   when: ephemeral_root_public_key | trim | length == 0
   no_log: true
 
