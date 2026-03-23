@@ -10,6 +10,8 @@ Supported runtime inputs are loaded from environment variables in [defaults/main
 - `TARGET_HOSTS`
 - `SERVICE_ID` or `REMOTE_USER` + `REMOTE_PASSWORD`
 
+For the main [site.yml](D:/GitHub%20Projects/Splunk%20Universal%20Forwarder/site.yml) workflow, no SSH public key input is required. The runner generates a temporary root keypair automatically when the initial login user is not `root`.
+
 ## Project Layout
 
 - `site.yml`: root entrypoint
@@ -63,6 +65,7 @@ $env:VAULT_TOKEN = "s.xxxxx"
 $env:TARGET_HOSTS = "server1.example.com"
 $env:REMOTE_USER = "svc_splunk"
 $env:REMOTE_PASSWORD = "super-secret"
+$env:EPHEMERAL_ROOT_PUBLIC_KEY = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... aap-runner"
 ansible-playbook -i inventory/hosts.yml bootstrap_root_ssh.yml
 ```
 
@@ -73,6 +76,7 @@ $env:VAULT_TOKEN = "s.xxxxx"
 $env:TARGET_HOSTS = "server1.example.com"
 $env:REMOTE_USER = "svc_splunk"
 $env:REMOTE_PASSWORD = "super-secret"
+$env:EPHEMERAL_ROOT_PUBLIC_KEY = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... aap-runner"
 ansible-playbook -i inventory/hosts.yml cleanup_root_ssh.yml
 ```
 
@@ -85,6 +89,8 @@ Recommended lifecycle:
 4. The public key is removed from the remote host after the run
 5. The generated private key is deleted from the runner after the run
 ```
+
+The standalone bootstrap and cleanup playbooks are advanced/manual utilities. They still accept an explicit public key value because they do not share runtime state between separate jobs.
 
 ## Security Notes
 
