@@ -40,6 +40,16 @@
         )
       }}
 
+- name: Reject ambiguous remote authentication inputs
+  ansible.builtin.assert:
+    that:
+      - not (
+          service_id | length > 0 and
+          remote_user | length > 0 and
+          remote_password | length > 0
+        )
+    fail_msg: "Remote authentication failed: provide either service_id or remote_user and remote_password, not both."
+
 - name: Validate Vault authentication inputs
   ansible.builtin.assert:
     that:

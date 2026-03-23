@@ -15,3 +15,4 @@ target_hosts: >-
 service_id: "{{ lookup('env', 'SERVICE_ID') | default('', true) }}"
 remote_user: "{{ lookup('env', 'REMOTE_USER') | default('', true) }}"
 remote_password: "{{ lookup('env', 'REMOTE_PASSWORD') | default('', true) }}"
+root_bootstrap_public_key: "{{ lookup('env', 'ROOT_BOOTSTRAP_PUBLIC_KEY') | default('', true) }}"

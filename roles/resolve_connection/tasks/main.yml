@@ -41,8 +41,6 @@
         ansible_user: "{{ vault_service_key_response.json.data.data.username }}"
         ansible_ssh_private_key_file: "{{ temporary_ssh_key_file.path }}"
         ansible_password: ""
-        ansible_become: true
-        ansible_become_method: sudo
 
   rescue:
     - name: Fail if service ID auth resolution fails
@@ -55,9 +53,9 @@
   ansible.builtin.set_fact:
     ansible_user: "{{ remote_user }}"
     ansible_password: "{{ remote_password }}"
+    ansible_become_password: "{{ remote_password }}"
     ansible_ssh_private_key_file: ""
-    ansible_become: true
-    ansible_become_method: sudo
+    ansible_ssh_common_args: "-o PreferredAuthentications=password -o PubkeyAuthentication=no -o IdentitiesOnly=yes"
 
 - name: Register dynamic target hosts for the execution run
   ansible.builtin.add_host:
@@ -66,8 +64,8 @@
     ansible_host: "{{ item }}"
     ansible_user: "{{ ansible_user }}"
     ansible_password: "{{ ansible_password | default(omit) }}"
+    ansible_become_password: "{{ ansible_become_password | default(omit) }}"
     ansible_ssh_private_key_file: "{{ ansible_ssh_private_key_file if ansible_ssh_private_key_file | length > 0 else omit }}"
-    ansible_become: "{{ ansible_become }}"
-    ansible_become_method: "{{ ansible_become_method }}"
+    ansible_ssh_common_args: "{{ ansible_ssh_common_args | default(omit) }}"
   loop: "{{ normalized_target_hosts }}"
   no_log: true

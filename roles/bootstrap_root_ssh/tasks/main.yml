@@ -1,0 +1,56 @@
+---
+- name: Validate bootstrap public key input
+  ansible.builtin.assert:
+    that:
+      - root_bootstrap_public_key | trim | length > 0
+    fail_msg: "Root SSH bootstrap failed: provide ROOT_BOOTSTRAP_PUBLIC_KEY."
+  delegate_to: localhost
+  run_once: true
+
+- name: Install bootstrap key for direct root login
+  ansible.builtin.raw: >-
+    {% if ansible_user == 'root' %}
+    test -f /root/.ssh/authorized_keys &&
+    grep -Fqx {{ root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys
+    {% else %}
+    sudo su - -c "test -f /root/.ssh/authorized_keys &&
+    grep -Fqx {{ root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys"
+    {% endif %}
+  changed_when: false
+  register: root_bootstrap_presence
+  failed_when: false
+  no_log: true
+
+- name: Install bootstrap key for direct root login
+  ansible.builtin.raw: >-
+    {% if ansible_user == 'root' %}
+    install -d -m 700 /root/.ssh &&
+    touch /root/.ssh/authorized_keys &&
+    chmod 600 /root/.ssh/authorized_keys &&
+    grep -Fqx {{ root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys ||
+    echo {{ root_bootstrap_public_key | quote }} >> /root/.ssh/authorized_keys
+    {% else %}
+    sudo su - -c "install -d -m 700 /root/.ssh &&
+    touch /root/.ssh/authorized_keys &&
+    chmod 600 /root/.ssh/authorized_keys &&
+    grep -Fqx {{ root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys ||
+    echo {{ root_bootstrap_public_key | quote }} >> /root/.ssh/authorized_keys"
+    {% endif %}
+  register: root_bootstrap_result
+  changed_when: true
+  when: root_bootstrap_presence.rc != 0
+  no_log: true
+
+- name: Verify root authorized key presence
+  ansible.builtin.raw: >-
+    {% if ansible_user == 'root' %}
+    test -f /root/.ssh/authorized_keys &&
+    grep -Fq {{ root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys
+    {% else %}
+    sudo su - -c "test -f /root/.ssh/authorized_keys &&
+    grep -Fq {{ root_bootstrap_public_key | quote }} /root/.ssh/authorized_keys"
+    {% endif %}
+  changed_when: false
+  register: root_bootstrap_verify
+  failed_when: root_bootstrap_verify.rc != 0
+  no_log: true

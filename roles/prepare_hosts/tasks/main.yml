@@ -1,6 +1,7 @@
 ---
 - name: Verify remote connectivity
   ansible.builtin.ping:
+  become: false
 
 - name: Validate supported Linux distribution
   ansible.builtin.assert:

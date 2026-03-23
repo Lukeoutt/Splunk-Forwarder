@@ -13,17 +13,25 @@
 
 - name: Prepare hosts, install Splunk UF, configure, and validate
   hosts: runtime_targets
-  gather_facts: true
-  become: true
+  gather_facts: false
   vars_files:
     - defaults/main.yml
     - group_vars/all.yml
 
+  pre_tasks:
+    - name: Gather facts without privilege escalation
+      ansible.builtin.setup:
+      become: false
+
   roles:
     - role: prepare_hosts
+      become: "{{ ansible_user != 'root' }}"
     - role: splunk_install
+      become: "{{ ansible_user != 'root' }}"
     - role: splunk_config
+      become: "{{ ansible_user != 'root' }}"
     - role: splunk_validate
+      become: "{{ ansible_user != 'root' }}"
 
 - name: Summarize execution
   hosts: localhost

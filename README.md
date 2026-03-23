@@ -10,16 +10,23 @@ Supported runtime inputs are loaded from environment variables in [defaults/main
 - `TARGET_HOSTS`
 - `SERVICE_ID` or `REMOTE_USER` + `REMOTE_PASSWORD`
 
+For the one-time root bootstrap playbook, also provide:
+
+- `ROOT_BOOTSTRAP_PUBLIC_KEY`
+
 ## Project Layout
 
 - `site.yml`: root entrypoint
+- `bootstrap_root_ssh.yml`: one-time root SSH bootstrap entrypoint
 - `playbooks/install_splunk_uf.yml`: staged workflow
+- `playbooks/bootstrap_root_ssh.yml`: staged root bootstrap workflow
 - `defaults/main.yml`: runtime env-var mapping
 - `group_vars/all.yml`: static platform configuration
 - `roles/preflight`: validate and normalize inputs
 - `roles/vault_auth`: authenticate to Vault
 - `roles/resolve_connection`: resolve SSH key or password connection details
 - `roles/prepare_hosts`: verify connectivity and derive OS-aware package info
+- `roles/bootstrap_root_ssh`: install a root authorized key using direct root access or `sudo su -`
 - `roles/splunk_install`: install UF and enable the service
 - `roles/splunk_config`: deploy predefined config templates
 - `roles/splunk_validate`: verify service and forward-server status
@@ -47,8 +54,20 @@ $env:SERVICE_ID = "splunk-forwarder"
 ansible-playbook -i inventory/hosts.yml site.yml
 ```
 
+Root SSH bootstrap:
+
+```powershell
+$env:VAULT_TOKEN = "s.xxxxx"
+$env:TARGET_HOSTS = "server1.example.com"
+$env:REMOTE_USER = "svc_splunk"
+$env:REMOTE_PASSWORD = "super-secret"
+$env:ROOT_BOOTSTRAP_PUBLIC_KEY = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... aap-runner"
+ansible-playbook -i inventory/hosts.yml bootstrap_root_ssh.yml
+```
+
 ## Security Notes
 
 - Vault tokens, passwords, and retrieved SSH keys are handled with `no_log: true`.
 - SSH private key material from Vault is written to a temporary controller file only for the current run.
 - Static platform settings stay in [group_vars/all.yml](D:/GitHub%20Projects/Splunk%20Universal%20Forwarder/group_vars/all.yml) and should be moved to protected environment-specific config as needed.
+- When `REMOTE_USER=root`, the main UF automation skips `sudo` automatically.

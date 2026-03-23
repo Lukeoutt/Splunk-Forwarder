@@ -1,0 +1,2 @@
+---
+- import_playbook: ../bootstrap_root_ssh.yml
